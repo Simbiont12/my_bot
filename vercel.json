@@ -2,29 +2,14 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/process_form.py",
-      "use": "@vercel/python"
-    },
-    {
-      "src": "api/check_messages.py", 
+      "src": "api/index.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
     {
-      "src": "/process_form",
-      "dest": "/api/process_form.py"
-    },
-    {
-      "src": "/check_messages",
-      "dest": "/api/check_messages.py"
-    },
-    {
       "src": "/(.*)",
-      "dest": "/api/process_form.py"
+      "dest": "/api/index.py"
     }
-  ],
-  "env": {
-    "PYTHON_VERSION": "3.9"
-  }
+  ]
 }
