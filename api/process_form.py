@@ -3,7 +3,6 @@ import json
 import requests
 from datetime import datetime
 import os
-import re
 from urllib.parse import urlparse, parse_qs
 
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
@@ -37,43 +36,34 @@ def format_students_table(text):
             else:
                 i += 3
                 
-            students.append({"name": name, "status": status, "last_name": words[i]})
+            students.append({"name": name, "status": status})
         else:
             i += 1
     
     if not students:
         return "Не удалось распознать данные формы"
     
-    students.sort(key=lambda x: x['last_name'])
-    
-    result = "ОТЧЕТ О ПОСЕЩАЕМОСТИ\n\n"
+    result = "🎓 ОТЧЕТ О ПОСЕЩАЕМОСТИ\n\n"
     
     if group:
-        result += f"Группа: {group}\n\n"
-    
-    result += "┌───┬──────────────────────────┬──────────┐\n"
-    result += "│ № │ ФИО студента            │ Статус   │\n"
-    result += "├───┼──────────────────────────┼──────────┤\n"
+        result += f"🏫 Группа: {group}\n\n"
     
     for idx, student in enumerate(students, 1):
-        name = student['name'][:22].ljust(22)
-        status = student['status'].ljust(8)
-        result += f"│ {idx:1} │ {name} │ {status} │\n"
-    
-    result += "└───┴──────────────────────────┴──────────┘\n"
+        status_icon = "✅" if student['status'] == 'Пришёл' else "❌"
+        result += f"{idx:2}. {student['name']} - {status_icon} {student['status']}\n"
     
     total = len(students)
     present = len([s for s in students if s['status'] == 'Пришёл'])
     absent = total - present
     
-    result += f"\nСтатистика:\n"
+    result += f"\n📊 Статистика:\n"
     result += f"• Всего: {total}\n"
     result += f"• Присутствуют: {present}\n"
     result += f"• Отсутствуют: {absent}\n"
     
-    result += f"\n{datetime.now().strftime('%d.%m.%Y %H:%M')}"
+    result += f"\n🕐 {datetime.now().strftime('%d.%m.%Y %H:%M')}"
     
-    return f"```\n{result}\n```"
+    return result
 
 def send_to_telegram(message_text):
     success_count = 0
@@ -87,8 +77,7 @@ def send_to_telegram(message_text):
         
         payload = {
             "chat_id": chat_id,
-            "text": message_text,
-            "parse_mode": "Markdown"
+            "text": message_text
         }
         
         try:
