@@ -13,63 +13,73 @@ def format_students_table(text):
     students = []
     group = None
     
-    # Убираем мусорные символы и исправляем форматирование
-    clean_text = text.replace('Итоги дня', '').replace('0:27', '').strip()
-    clean_text = re.sub(r'["():]', '', clean_text)  # Убираем кавычки, скобки, двоеточия
-    clean_text = re.sub(r' - Пришёл', '', clean_text)  # Убираем дублирование статуса
+    print("=== ИСХОДНЫЕ ДАННЫЕ ===")
+    print(repr(text))
+    print("=======================")
     
-    lines = clean_text.split('\n')
+    # Разбиваем на строки и обрабатываем каждую
+    lines = text.split('\n')
     
     for line in lines:
         line = line.strip()
         if not line:
             continue
             
-        # Ищем группу
-        if group is None and re.search(r'\d-ИКСС\d{2}-\d{2}', line):
-            group_match = re.search(r'(\d-ИКСС\d{2}-\d{2})', line)
+        print(f"Обрабатываем строку: {repr(line)}")
+        
+        # Ищем группу (формат: "1+ИКСС11-10")
+        if not group and re.search(r'\d\+ИКСС\d{2}-\d{2}', line):
+            group_match = re.search(r'(\d\+ИКСС\d{2}-\d{2})', line)
             if group_match:
-                group = group_match.group(1)
+                group = group_match.group(1).replace('+', '-')  # Заменяем + на -
+                print(f"Найдена группа: {group}")
             continue
         
-        # Ищем студентов в формате "Имя Отчество Фамилия Статус"
-        student_match = re.search(r'(\d+)\.\s+([А-ЯЁ][а-яё]+)\s+([А-ЯЁ][а-яё]+)\s+([А-ЯЁ][а-яё]+)\s+([А-ЯЁа-яё]+)', line)
-        if student_match:
-            num, first_name, middle_name, last_name, status = student_match.groups()
-            name = f"{last_name} {first_name} {middle_name}"
-            students.append({"name": name, "status": status})
-    
-    # Если не нашли в line-формате, пробуем word-формат
-    if not students:
-        words = clean_text.split()
-        i = 0
-        while i < len(words):
-            if group is None and re.search(r'\d-ИКСС\d{2}-\d{2}', words[i]):
-                group = words[i]
-                i += 1
-                continue
+        # Ищем студента в формате: "Имя Отчество Фамилия Статус"
+        # Убираем кавычки и лишние символы
+        clean_line = re.sub(r'["()]', '', line)
+        
+        # Пробуем разные паттерны для извлечения ФИО и статуса
+        patterns = [
+            r'(\d+)\.?\s*([А-ЯЁ][а-яё]+)\s+([А-ЯЁ][а-яё]+)\s+([А-ЯЁ][а-яё]+)\s+([А-ЯЁа-яё]+)',
+            r'([А-ЯЁ][а-яё]+)\s+([А-ЯЁ][а-яё]+)\s+([А-ЯЁ][а-яё]+)\s+([А-ЯЁа-яё]+)',
+            r'(\d+)\.?\s*([А-ЯЁ][а-яё]+)\s+([А-ЯЁ][а-яё]+)\s+([А-ЯЁ][а-яё]+)'
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, clean_line)
+            if match:
+                groups = match.groups()
+                if len(groups) == 5:
+                    # Формат с номером: "1. Имя Отчество Фамилия Статус"
+                    num, first_name, middle_name, last_name, status = groups
+                    name = f"{last_name} {first_name} {middle_name}"
+                elif len(groups) == 4:
+                    # Формат без номера: "Имя Отчество Фамилия Статус"
+                    first_name, middle_name, last_name, status = groups
+                    name = f"{last_name} {first_name} {middle_name}"
+                elif len(groups) == 3:
+                    # Формат без статуса
+                    first_name, middle_name, last_name = groups
+                    name = f"{last_name} {first_name} {middle_name}"
+                    status = "Пришёл"
                 
-            if (i + 2 < len(words) and 
-                words[i][0].isupper() and 
-                words[i+1][0].isupper() and 
-                words[i+2][0].isupper()):
+                # Проверяем валидность статуса
+                valid_statuses = ['Болеет', 'Прогул', 'Академ', 'ИГ', 'Заявление', 'Пришёл']
+                if status not in valid_statuses:
+                    status = "Пришёл"  # Статус по умолчанию
                 
-                name = f"{words[i]} {words[i+1]} {words[i+2]}"
-                status = "Пришёл"
-                
-                if i + 3 < len(words) and words[i+3] in ['Болеет', 'Прогул', 'Академ', 'ИГ', 'Заявление', 'Пришёл']:
-                    status = words[i+3]
-                    i += 4
-                else:
-                    i += 3
-                    
                 students.append({"name": name, "status": status})
-            else:
-                i += 1
+                print(f"Найден студент: {name} - {status}")
+                break
     
     if not students:
-        return "Не удалось распознать данные формы"
+        return "❌ Не удалось распознать данные формы"
     
+    # Сортируем студентов по фамилии
+    students.sort(key=lambda x: x['name'].split()[0])
+    
+    # Форматируем результат
     result = "🎓 ОТЧЕТ О ПОСЕЩАЕМОСТИ\n\n"
     
     if group:
@@ -90,6 +100,7 @@ def format_students_table(text):
     
     result += f"\n🕐 {datetime.now().strftime('%d.%m.%Y %H:%M')}"
     
+    print(f"✅ Сформирован отчет: {total} студентов")
     return result
 
 def send_to_telegram(message_text):
@@ -112,9 +123,12 @@ def send_to_telegram(message_text):
             
             if response.status_code == 200:
                 success_count += 1
+                print(f"✅ Сообщение отправлено в чат {chat_id}")
+            else:
+                print(f"❌ Ошибка отправки в чат {chat_id}: {response.status_code}")
                 
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"❌ Исключение при отправке: {e}")
     
     return success_count > 0
 
@@ -155,6 +169,7 @@ class handler(BaseHTTPRequestHandler):
                 """)
                 
         except Exception as e:
+            print(f"❌ Ошибка в do_GET: {e}")
             self.send_json_response(500, {"error": str(e)})
     
     def do_POST(self):
@@ -189,6 +204,7 @@ class handler(BaseHTTPRequestHandler):
                 self.send_error(404)
                 
         except Exception as e:
+            print(f"❌ Ошибка в do_POST: {e}")
             self.send_json_response(500, {"error": str(e)})
     
     def send_json_response(self, status_code, data):
