@@ -11,28 +11,31 @@ CHAT_IDS = os.environ.get('CHAT_ID', '').split(',')
 def format_students_table(text):
     students = []
     group = None
-    
     clean_text = text.replace('Итоги дня', '').replace('0:27', '').strip()
+    clean_text = clean_text.replace('(")', '').replace('(":', '').replace('":', '')
     words = clean_text.split()
-    
     i = 0
     while i < len(words):
+        if words[i].endswith('.') and words[i][:-1].isdigit():
+            i += 1
+            continue
         if group is None and '-' in words[i] and any(char.isdigit() for char in words[i]):
             group = words[i]
             i += 1
             continue
-            
         if (i + 2 < len(words) and 
             words[i][0].isupper() and 
             words[i+1][0].isupper() and 
             words[i+2][0].isupper()):
-            
             name = f"{words[i]} {words[i+1]} {words[i+2]}"
             status = "Пришёл"
-            
-            if i + 3 < len(words) and words[i+3] in ['Болеет', 'Прогул', 'Академ', 'ИГ', 'Заявление', 'Пришёл']:
-                status = words[i+3]
-                i += 4
+            status_index = i + 3
+            if status_index < len(words) and words[status_index] == '-':
+                status_index += 1
+                
+            if status_index < len(words) and words[status_index] in ['Болеет', 'Прогул', 'Академ', 'ИГ', 'Заявление', 'Пришёл']:
+                status = words[status_index]
+                i = status_index + 1
             else:
                 i += 3
                 
