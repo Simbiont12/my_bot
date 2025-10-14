@@ -4,7 +4,7 @@ import requests
 from datetime import datetime
 import os
 import re
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, unquote
 
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
 CHAT_IDS = os.environ.get('CHAT_ID', '').split(',')
@@ -17,67 +17,52 @@ def format_students_table(text):
     print(repr(text))
     print("=======================")
     
-    # Разбиваем на строки и обрабатываем каждую
-    lines = text.split('\n')
-    
-    for line in lines:
-        line = line.strip()
-        if not line:
-            continue
+    try:
+        # Декодируем URL-encoded текст
+        decoded_text = unquote(text)
+        print(f"Декодированный текст: {decoded_text}")
+        
+        # Парсим JSON данные
+        data = json.loads(decoded_text)
+        print(f"JSON данные: {data}")
+        
+        # Извлекаем группу (первый ключ в JSON)
+        if data:
+            group = list(data.keys())[0]
+            print(f"Группа: {group}")
             
-        print(f"Обрабатываем строку: {repr(line)}")
+            # Получаем данные студентов
+            students_data = data[group]
+            print(f"Данные студентов: {students_data}")
+            
+            # Парсим студентов
+            for student_entry in students_data.split('\n'):
+                if student_entry.strip():
+                    # Формат: "Фамилия Имя Отчество": Статус
+                    match = re.search(r'"([^"]+)":\s*([^\\n]+)', student_entry)
+                    if match:
+                        name, status = match.groups()
+                        # Убираем лишние символы из статуса
+                        status = status.strip().replace('\\n', '').replace('\\', '')
+                        students.append({"name": name, "status": status})
+                        print(f"Найден студент: {name} - {status}")
         
-        # Ищем группу (формат: "1+ИКСС11-10")
-        if not group and re.search(r'\d\+ИКСС\d{2}-\d{2}', line):
-            group_match = re.search(r'(\d\+ИКСС\d{2}-\d{2})', line)
-            if group_match:
-                group = group_match.group(1).replace('+', '-')  # Заменяем + на -
-                print(f"Найдена группа: {group}")
-            continue
-        
-        # Ищем студента в формате: "Имя Отчество Фамилия Статус"
-        # Убираем кавычки и лишние символы
-        clean_line = re.sub(r'["()]', '', line)
-        
-        # Пробуем разные паттерны для извлечения ФИО и статуса
-        patterns = [
-            r'(\d+)\.?\s*([А-ЯЁ][а-яё]+)\s+([А-ЯЁ][а-яё]+)\s+([А-ЯЁ][а-яё]+)\s+([А-ЯЁа-яё]+)',
-            r'([А-ЯЁ][а-яё]+)\s+([А-ЯЁ][а-яё]+)\s+([А-ЯЁ][а-яё]+)\s+([А-ЯЁа-яё]+)',
-            r'(\d+)\.?\s*([А-ЯЁ][а-яё]+)\s+([А-ЯЁ][а-яё]+)\s+([А-ЯЁ][а-яё]+)'
-        ]
-        
-        for pattern in patterns:
-            match = re.search(pattern, clean_line)
+    except json.JSONDecodeError:
+        print("❌ Ошибка парсинга JSON")
+        # Если не JSON, пробуем простой парсинг
+        lines = text.split('\n')
+        for line in lines:
+            match = re.search(r'([А-ЯЁ][а-яё]+)\s+([А-ЯЁ][а-яё]+)\s+([А-ЯЁ][а-яё]+)', line)
             if match:
-                groups = match.groups()
-                if len(groups) == 5:
-                    # Формат с номером: "1. Имя Отчество Фамилия Статус"
-                    num, first_name, middle_name, last_name, status = groups
-                    name = f"{last_name} {first_name} {middle_name}"
-                elif len(groups) == 4:
-                    # Формат без номера: "Имя Отчество Фамилия Статус"
-                    first_name, middle_name, last_name, status = groups
-                    name = f"{last_name} {first_name} {middle_name}"
-                elif len(groups) == 3:
-                    # Формат без статуса
-                    first_name, middle_name, last_name = groups
-                    name = f"{last_name} {first_name} {middle_name}"
-                    status = "Пришёл"
-                
-                # Проверяем валидность статуса
-                valid_statuses = ['Болеет', 'Прогул', 'Академ', 'ИГ', 'Заявление', 'Пришёл']
-                if status not in valid_statuses:
-                    status = "Пришёл"  # Статус по умолчанию
-                
-                students.append({"name": name, "status": status})
-                print(f"Найден студент: {name} - {status}")
-                break
+                last_name, first_name, middle_name = match.groups()
+                name = f"{last_name} {first_name} {middle_name}"
+                students.append({"name": name, "status": "Пришёл"})
     
     if not students:
         return "❌ Не удалось распознать данные формы"
     
     # Сортируем студентов по фамилии
-    students.sort(key=lambda x: x['name'].split()[0])
+    students.sort(key=lambda x: x['name'])
     
     # Форматируем результат
     result = "🎓 ОТЧЕТ О ПОСЕЩАЕМОСТИ\n\n"
