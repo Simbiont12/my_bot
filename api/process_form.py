@@ -1,4 +1,4 @@
-om http.server import BaseHTTPRequestHandler
+from http.server import BaseHTTPRequestHandler
 import json
 import requests
 from datetime import datetime
@@ -49,7 +49,7 @@ def format_students_table(text):
         result += f"Группа: {group}\n\n"
     
     for idx, student in enumerate(students, 1):
-        result += f" {idx}. {student['name']} - {student['status']}\n"
+        result += f"{idx}. {student['name']} - {student['status']}\n"
     
     total = len(students)
     present = len([s for s in students if s['status'] == 'Пришёл'])
@@ -76,7 +76,8 @@ def send_to_telegram(message_text):
         
         payload = {
             "chat_id": chat_id,
-            "text": message_text
+            "text": message_text,
+            "parse_mode": "HTML"
         }
         
         try:
