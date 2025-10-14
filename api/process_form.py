@@ -14,15 +14,20 @@ def format_students_table(text):
     group = None
     
     try:
+        # Декодируем URL-encoded текст
         decoded_text = unquote(text)
+        
+        # Простой поиск группы
         group_match = re.search(r'(\d-ИКСС\d{2}-\d{2})', decoded_text)
         if group_match:
             group = group_match.group(1)
         
+        # Простой поиск студентов в формате: "ФИО": Статус
         pattern = r'"([^"]+)"\s*:\s*([А-Яа-яёЁ]+)'
         matches = re.findall(pattern, decoded_text)
         
         for name, status in matches:
+            # Проверяем валидность статуса
             valid_statuses = ['Болеет', 'Прогул', 'Академ', 'ИГ', 'Заявление', 'Пришёл', 'Пришёд']
             if status not in valid_statuses:
                 status = "Пришёл"
@@ -31,34 +36,33 @@ def format_students_table(text):
     
     except Exception as e:
         print(f"Ошибка: {e}")
-        return " Ошибка обработки данных"
+        return "❌ Ошибка обработки данных"
     
     if not students:
-        return " Не удалось распознать данные формы"
+        return "❌ Не удалось распознать данные формы"
     
     # Сортируем студентов по фамилии
     students.sort(key=lambda x: x['name'])
     
     # Форматируем результат
-    result = " ОТЧЕТ О ПОСЕЩАЕМОСТИ\n\n"
+    result = "ОТЧЕТ О ПОСЕЩАЕМОСТИ\n\n"
     
     if group:
-        result += f" Группа: {group}\n\n"
+        result += f"Группа: {group}\n\n"
     
     for idx, student in enumerate(students, 1):
-        status_icon = "" if student['status'] == 'Пришёл' else ""
-        result += f"{idx:2}. {student['name']} - {status_icon} {student['status']}\n"
+        result += f" {idx}. {student['name']} - {student['status']}\n"
     
     total = len(students)
     present = len([s for s in students if s['status'] == 'Пришёл'])
     absent = total - present
     
-    result += f"\n Статистика:\n"
+    result += f"\nСтатистика:\n"
     result += f"• Всего: {total}\n"
     result += f"• Присутствуют: {present}\n"
     result += f"• Отсутствуют: {absent}\n"
     
-    result += f"\n {datetime.now().strftime('%d.%m.%Y %H:%M')}"
+    result += f"\n{datetime.now().strftime('%d.%m.%Y %H:%M')}"
     
     return result
 
@@ -82,12 +86,9 @@ def send_to_telegram(message_text):
             
             if response.status_code == 200:
                 success_count += 1
-                print(f" Сообщение отправлено в чат {chat_id}")
-            else:
-                print(f" Ошибка отправки в чат {chat_id}: {response.status_code}")
                 
-        except Exception as e:
-            print(f" Исключение при отправке: {e}")
+        except Exception:
+            pass
     
     return success_count > 0
 
@@ -128,7 +129,6 @@ class handler(BaseHTTPRequestHandler):
                 """)
                 
         except Exception as e:
-            print(f" Ошибка в do_GET: {e}")
             self.send_json_response(500, {"error": str(e)})
     
     def do_POST(self):
@@ -163,7 +163,6 @@ class handler(BaseHTTPRequestHandler):
                 self.send_error(404)
                 
         except Exception as e:
-            print(f" Ошибка в do_POST: {e}")
             self.send_json_response(500, {"error": str(e)})
     
     def send_json_response(self, status_code, data):
