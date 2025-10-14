@@ -8,6 +8,14 @@ import os
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
 CHAT_ID = os.environ.get('CHAT_ID')
 
+def process_request(self, method):
+    try:
+        # ДОБАВЬТЕ ЭТОТ КОД ДЛЯ ЛОГИРОВАНИЯ
+        print("🚀 Функция запущена!")
+        print(f"📋 BOT_TOKEN: {'установлен' if BOT_TOKEN else 'НЕ УСТАНОВЛЕН'}")
+        print(f"📋 CHAT_ID: {'установлен' if CHAT_ID else 'НЕ УСТАНОВЛЕН'}")
+        
+        # остальной ваш код...
 def format_students_table(text):
     """Форматирует сырые данные в красивую таблицу"""
     students = []
