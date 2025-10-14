@@ -3,6 +3,7 @@ import json
 import requests
 from datetime import datetime
 import os
+import re
 from urllib.parse import urlparse, parse_qs
 
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
@@ -12,55 +13,82 @@ def format_students_table(text):
     students = []
     group = None
     
+    # Убираем мусорные символы и исправляем форматирование
     clean_text = text.replace('Итоги дня', '').replace('0:27', '').strip()
-    words = clean_text.split()
+    clean_text = re.sub(r'["():]', '', clean_text)  # Убираем кавычки, скобки, двоеточия
+    clean_text = re.sub(r' - Пришёл', '', clean_text)  # Убираем дублирование статуса
     
-    i = 0
-    while i < len(words):
-        if group is None and '-' in words[i] and any(char.isdigit() for char in words[i]):
-            group = words[i]
-            i += 1
+    lines = clean_text.split('\n')
+    
+    for line in lines:
+        line = line.strip()
+        if not line:
             continue
             
-        if (i + 2 < len(words) and 
-            words[i][0].isupper() and 
-            words[i+1][0].isupper() and 
-            words[i+2][0].isupper()):
-            
-            name = f"{words[i]} {words[i+1]} {words[i+2]}"
-            status = "Пришёл"
-            
-            if i + 3 < len(words) and words[i+3] in ['Болеет', 'Прогул', 'Академ', 'ИГ', 'Заявление', 'Пришёл']:
-                status = words[i+3]
-                i += 4
-            else:
-                i += 3
-                
+        # Ищем группу
+        if group is None and re.search(r'\d-ИКСС\d{2}-\d{2}', line):
+            group_match = re.search(r'(\d-ИКСС\d{2}-\d{2})', line)
+            if group_match:
+                group = group_match.group(1)
+            continue
+        
+        # Ищем студентов в формате "Имя Отчество Фамилия Статус"
+        student_match = re.search(r'(\d+)\.\s+([А-ЯЁ][а-яё]+)\s+([А-ЯЁ][а-яё]+)\s+([А-ЯЁ][а-яё]+)\s+([А-ЯЁа-яё]+)', line)
+        if student_match:
+            num, first_name, middle_name, last_name, status = student_match.groups()
+            name = f"{last_name} {first_name} {middle_name}"
             students.append({"name": name, "status": status})
-        else:
-            i += 1
+    
+    # Если не нашли в line-формате, пробуем word-формат
+    if not students:
+        words = clean_text.split()
+        i = 0
+        while i < len(words):
+            if group is None and re.search(r'\d-ИКСС\d{2}-\d{2}', words[i]):
+                group = words[i]
+                i += 1
+                continue
+                
+            if (i + 2 < len(words) and 
+                words[i][0].isupper() and 
+                words[i+1][0].isupper() and 
+                words[i+2][0].isupper()):
+                
+                name = f"{words[i]} {words[i+1]} {words[i+2]}"
+                status = "Пришёл"
+                
+                if i + 3 < len(words) and words[i+3] in ['Болеет', 'Прогул', 'Академ', 'ИГ', 'Заявление', 'Пришёл']:
+                    status = words[i+3]
+                    i += 4
+                else:
+                    i += 3
+                    
+                students.append({"name": name, "status": status})
+            else:
+                i += 1
     
     if not students:
         return "Не удалось распознать данные формы"
     
-    result = "ОТЧЕТ О ПОСЕЩАЕМОСТИ\n\n"
+    result = "🎓 ОТЧЕТ О ПОСЕЩАЕМОСТИ\n\n"
     
     if group:
-        result += f"Группа: {group}\n\n"
+        result += f"🏫 Группа: {group}\n\n"
     
     for idx, student in enumerate(students, 1):
-        result += f"{idx}. {student['name']} - {student['status']}\n"
+        status_icon = "✅" if student['status'] == 'Пришёл' else "❌"
+        result += f"{idx:2}. {student['name']} - {status_icon} {student['status']}\n"
     
     total = len(students)
     present = len([s for s in students if s['status'] == 'Пришёл'])
     absent = total - present
     
-    result += f"\nСтатистика:\n"
+    result += f"\n📊 Статистика:\n"
     result += f"• Всего: {total}\n"
     result += f"• Присутствуют: {present}\n"
     result += f"• Отсутствуют: {absent}\n"
     
-    result += f"\n{datetime.now().strftime('%d.%m.%Y %H:%M')}"
+    result += f"\n🕐 {datetime.now().strftime('%d.%m.%Y %H:%M')}"
     
     return result
 
