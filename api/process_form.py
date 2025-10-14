@@ -3,6 +3,7 @@ import json
 import requests
 from datetime import datetime
 import os
+import re
 from urllib.parse import urlparse, parse_qs
 
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
@@ -36,20 +37,26 @@ def format_students_table(text):
             else:
                 i += 3
                 
-            students.append({"name": name, "status": status})
+            students.append({"name": name, "status": status, "last_name": words[i]})
         else:
             i += 1
     
     if not students:
         return "Не удалось распознать данные формы"
     
+    students.sort(key=lambda x: x['last_name'])
+    
     result = "ОТЧЕТ О ПОСЕЩАЕМОСТИ\n\n"
     
     if group:
         result += f"Группа: {group}\n\n"
     
+    result += "№  ФИО студента              Статус\n"
+    result += "─" * 40 + "\n"
+    
     for idx, student in enumerate(students, 1):
-        result += f" {idx}. {student['name']} - {student['status']}\n"
+        name = student['name'][:22].ljust(22)
+        result += f"{idx:2}. {name} {student['status']}\n"
     
     total = len(students)
     present = len([s for s in students if s['status'] == 'Пришёл'])
