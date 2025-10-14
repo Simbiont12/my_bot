@@ -17,49 +17,49 @@ def format_students_table(text):
     print(repr(text))
     print("=======================")
     
-    try:
-        # Декодируем URL-encoded текст
-        decoded_text = unquote(text)
-        print(f"Декодированный текст: {decoded_text}")
-        
-        # Парсим JSON данные
-        data = json.loads(decoded_text)
-        print(f"JSON данные: {data}")
-        
-        # Извлекаем группу (первый ключ в JSON)
-        if data:
-            group = list(data.keys())[0]
-            print(f"Группа: {group}")
+    # Декодируем URL-encoded текст
+    decoded_text = unquote(text)
+    print(f"Декодированный текст: {repr(decoded_text)}")
+    
+    # Разбиваем на строки
+    lines = decoded_text.split('\n')
+    
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
             
-            # Получаем данные студентов
-            students_data = data[group]
-            print(f"Данные студентов: {students_data}")
-            
-            # Парсим студентов
-            for student_entry in students_data.split('\n'):
-                if student_entry.strip():
-                    # Формат: "Фамилия Имя Отчество": Статус
-                    match = re.search(r'"([^"]+)":\s*([^\\n]+)', student_entry)
-                    if match:
-                        name, status = match.groups()
-                        # Убираем лишние символы из статуса
-                        status = status.strip().replace('\\n', '').replace('\\', '')
-                        students.append({"name": name, "status": status})
-                        print(f"Найден студент: {name} - {status}")
+        print(f"Обрабатываем строку: {repr(line)}")
         
-    except json.JSONDecodeError:
-        print("❌ Ошибка парсинга JSON")
-        # Если не JSON, пробуем простой парсинг
-        lines = text.split('\n')
-        for line in lines:
-            match = re.search(r'([А-ЯЁ][а-яё]+)\s+([А-ЯЁ][а-яё]+)\s+([А-ЯЁ][а-яё]+)', line)
-            if match:
-                last_name, first_name, middle_name = match.groups()
-                name = f"{last_name} {first_name} {middle_name}"
-                students.append({"name": name, "status": "Пришёл"})
+        # Ищем группу (формат: 1-ИКСС11-10)
+        if not group and re.search(r'\d-ИКСС\d{2}-\d{2}', line):
+            group_match = re.search(r'(\d-ИКСС\d{2}-\d{2})', line)
+            if group_match:
+                group = group_match.group(1)
+                print(f"Найдена группа: {group}")
+            continue
+        
+        # Ищем ФИО и статус в формате: Фамилия Имя Отчество Статус
+        # Паттерн: три слова с заглавных + статус
+        pattern = r'([А-ЯЁ][а-яё]+)\s+([А-ЯЁ][а-яё]+)\s+([А-ЯЁ][а-яё]+)\s+([А-ЯЁа-яё]+)'
+        match = re.search(pattern, line)
+        
+        if match:
+            last_name, first_name, middle_name, status = match.groups()
+            name = f"{last_name} {first_name} {middle_name}"
+            
+            # Проверяем валидность статуса
+            valid_statuses = ['Болеет', 'Прогул', 'Академ', 'ИГ', 'Заявление', 'Пришёл']
+            if status not in valid_statuses:
+                status = "Пришёл"  # Статус по умолчанию
+            
+            students.append({"name": name, "status": status})
+            print(f"Найден студент: {name} - {status}")
     
     if not students:
         return "❌ Не удалось распознать данные формы"
+    
+    print(f"✅ Найдено студентов: {len(students)}")
     
     # Сортируем студентов по фамилии
     students.sort(key=lambda x: x['name'])
@@ -85,7 +85,6 @@ def format_students_table(text):
     
     result += f"\n🕐 {datetime.now().strftime('%d.%m.%Y %H:%M')}"
     
-    print(f"✅ Сформирован отчет: {total} студентов")
     return result
 
 def send_to_telegram(message_text):
