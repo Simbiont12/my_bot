@@ -245,3 +245,4 @@ if __name__ == '__main__':
     print("🚀 Сервер запущен на http://localhost:8000")
     server = HTTPServer(('localhost', 8000), handler)
     server.serve_forever()
+    #1
