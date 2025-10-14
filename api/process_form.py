@@ -1,3 +1,4 @@
+```python
 from http.server import BaseHTTPRequestHandler
 import json
 import requests
@@ -51,12 +52,8 @@ def format_students_table(text):
     if group:
         result += f"Группа: {group}\n\n"
     
-    result += "№  ФИО студента              Статус\n"
-    result += "─" * 40 + "\n"
-    
     for idx, student in enumerate(students, 1):
-        name = student['name'][:22].ljust(22)
-        result += f"{idx:2}. {name} {student['status']}\n"
+        result += f" {idx}. {student['name']} - {student['status']}\n"
     
     total = len(students)
     present = len([s for s in students if s['status'] == 'Пришёл'])
@@ -183,3 +180,4 @@ class handler(BaseHTTPRequestHandler):
         self.send_header('Content-type', 'text/html')
         self.end_headers()
         self.wfile.write(html_content.encode())
+```
