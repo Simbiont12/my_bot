@@ -15,6 +15,8 @@ def format_students_table(text):
     students = []
     group = None
     
+    print(f"🔧 Начало обработки текста: {text[:50]}...")
+    
     # Очищаем текст
     clean_text = text.replace('Итоги дня', '').replace('0:27', '').strip()
     words = clean_text.split()
@@ -24,6 +26,7 @@ def format_students_table(text):
         # Ищем группу
         if group is None and '-' in words[i] and any(char.isdigit() for char in words[i]):
             group = words[i]
+            print(f"📋 Найдена группа: {group}")
             i += 1
             continue
             
@@ -44,10 +47,12 @@ def format_students_table(text):
                 i += 3
                 
             students.append({"name": name, "status": status})
+            print(f"👤 Найден студент: {name} - {status}")
         else:
             i += 1
     
     if not students:
+        print("❌ Студенты не найдены")
         return "❌ Не удалось распознать данные формы"
     
     # Создаем таблицу
@@ -73,10 +78,15 @@ def format_students_table(text):
     
     result += f"\n🕐 <i>{datetime.now().strftime('%d.%m.%Y %H:%M')}</i>"
     
+    print(f"✅ Таблица сформирована: {total} студентов")
     return result
 
 def send_to_telegram(message_text):
     """Отправляет сообщение в Telegram через API бота"""
+    print(f"📤 Начало отправки в Telegram...")
+    print(f"🔑 BOT_TOKEN: {'установлен' if BOT_TOKEN else 'НЕТ'}")
+    print(f"💬 CHAT_IDS: {CHAT_IDS}")
+    
     success_count = 0
     
     for chat_id in CHAT_IDS:
@@ -96,6 +106,7 @@ def send_to_telegram(message_text):
         try:
             print(f"📤 Отправка в чат {chat_id}...")
             response = requests.post(url, json=payload, timeout=10)
+            print(f"📤 Ответ Telegram: {response.status_code}")
             
             if response.status_code == 200:
                 print(f"✅ Успешно отправлено в {chat_id}")
@@ -106,12 +117,15 @@ def send_to_telegram(message_text):
         except Exception as e:
             print(f"❌ Исключение при отправке в {chat_id}: {e}")
     
+    print(f"📊 Итог: отправлено в {success_count} из {len(CHAT_IDS)} чатов")
     return success_count > 0
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        """Обрабатывает GET запросы"""
+        """Обрабатывает GET запросы (для тестирования)"""
         try:
+            print(f"📍 GET запрос: {self.path}")
+            
             parsed_path = urlparse(self.path)
             
             if parsed_path.path == '/process_form' or parsed_path.path.startswith('/process_form'):
@@ -120,117 +134,132 @@ class handler(BaseHTTPRequestHandler):
                 text = params.get('text', [''])[0]
                 
                 if not text:
-                    self.send_json_response(400, {"error": "No text provided"})
-                    return
+                    print("❌ Пустой текст")
+                    return self.send_json_response(400, {"error": "No text provided"})
                 
                 print(f"📨 Получен текст: {text[:100]}...")
                 
                 # Форматируем в таблицу
                 formatted_message = format_students_table(text)
-                print(f"📊 Форматированное сообщение: {formatted_message[:100]}...")
                 
                 # Отправляем в Telegram
                 success = send_to_telegram(formatted_message)
                 
                 if success:
-                    print("✅ Сообщение отправлено в Telegram")
-                    self.send_json_response(200, {
+                    print("✅ Успех: сообщение отправлено в Telegram")
+                    return self.send_json_response(200, {
                         "status": "success", 
                         "message": "Сообщение отправлено в Telegram",
                         "chats_count": len(CHAT_IDS)
                     })
                 else:
-                    print("❌ Не удалось отправить ни в один чат")
-                    self.send_json_response(500, {
+                    print("❌ Ошибка: не удалось отправить в Telegram")
+                    return self.send_json_response(500, {
                         "error": "Failed to send message to any chat",
                         "chats_tried": len(CHAT_IDS)
                     })
                     
             else:
                 # Главная страница
-                self.send_html_response("""
+                return self.send_html_response("""
                 <!DOCTYPE html>
                 <html>
                 <head>
                     <title>Telegram Form Processor</title>
                     <meta charset="utf-8">
-                    <style>
-                        body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; }
-                        code { background: #f4f4f4; padding: 10px; display: block; margin: 10px 0; }
-                        .success { color: green; }
-                        .error { color: red; }
-                    </style>
                 </head>
                 <body>
                     <h1>🤖 Telegram Form Processor</h1>
-                    <p>Сервер для обработки данных и отправки в Telegram</p>
-                    
-                    <h2>📝 Использование:</h2>
-                    <p>GET запрос:</p>
-                    <code>https://my-pair136pq-sims-projects-10ecc07f.vercel.app/process_form?text=Ваши_данные</code>
-                    
-                    <h2>🔧 Конфигурация:</h2>
-                    <ul>
-                        <li>Бот: <code>{}</code></li>
-                        <li>Чаты: <code>{}</code></li>
-                    </ul>
-                    
-                    <h2>✅ Статус: Сервер работает</h2>
-                    <p>Сообщения будут отправляться в указанные Telegram чаты</p>
+                    <p>Сервер работает. Используйте /process_form?text=...</p>
                 </body>
                 </html>
-                """.format(BOT_TOKEN[:10] + '...' if BOT_TOKEN else 'Не установлен', 
-                          len(CHAT_IDS)))
+                """)
                 
         except Exception as e:
             print(f"❌ Ошибка в do_GET: {e}")
-            self.send_json_response(500, {"error": str(e)})
+            return self.send_json_response(500, {"error": str(e)})
     
     def do_POST(self):
-        """Обрабатывает POST запросы"""
+        """Обрабатывает POST запросы от Яндекс Форм"""
         try:
+            print(f"📍 POST запрос: {self.path}")
+            
             if self.path == '/process_form':
                 content_length = int(self.headers.get('Content-Length', 0))
+                print(f"📏 Длина контента: {content_length}")
+                
                 if content_length > 0:
                     body = self.rfile.read(content_length).decode('utf-8')
+                    print(f"📦 Тело запроса: {body[:200]}...")
                     
+                    # Пробуем разные форматы данных
+                    text = ""
                     if self.headers.get('Content-Type') == 'application/json':
-                        data = json.loads(body)
-                        text = data.get('text', '')
+                        try:
+                            data = json.loads(body)
+                            text = data.get('text', '')
+                            print(f"📋 JSON текст: {text}")
+                        except:
+                            print("❌ Ошибка парсинга JSON")
                     else:
-                        data = parse_qs(body)
-                        text = data.get('text', [''])[0]
+                        # Формат form-data или x-www-form-urlencoded
+                        try:
+                            data = parse_qs(body)
+                            text = data.get('text', [''])[0]
+                            if not text:
+                                # Пробуем получить первый параметр
+                                text = list(data.values())[0][0] if data else ''
+                            print(f"📋 Form текст: {text}")
+                        except:
+                            print("❌ Ошибка парсинга form-data")
                 else:
                     text = ''
+                    print("⚠️ Пустое тело запроса")
                 
                 if not text:
-                    self.send_json_response(400, {"error": "No text provided"})
-                    return
+                    print("❌ Текст не найден в запросе")
+                    return self.send_json_response(400, {"error": "No text provided"})
                 
-                print(f"📨 Получен POST текст: {text[:100]}...")
+                print(f"📨 Получен текст для обработки: {text[:100]}...")
                 
-                # Форматируем и отправляем
+                # Форматируем в таблицу
                 formatted_message = format_students_table(text)
+                
+                # Отправляем в Telegram
                 success = send_to_telegram(formatted_message)
                 
                 if success:
-                    self.send_json_response(200, {"status": "success"})
+                    print("🎉 УСПЕХ: Сообщение отправлено в Telegram!")
+                    # Важно: Яндекс Формы ждут простой ответ
+                    return self.send_json_response(200, {
+                        "status": "success",
+                        "message": "Данные обработаны и отправлены"
+                    })
                 else:
-                    self.send_json_response(500, {"error": "Failed to send message"})
+                    print("💥 ОШИБКА: Не удалось отправить в Telegram")
+                    return self.send_json_response(500, {
+                        "error": "Не удалось отправить сообщение"
+                    })
                     
             else:
-                self.send_error(404)
+                print(f"❌ Неизвестный путь: {self.path}")
+                return self.send_error(404)
                 
         except Exception as e:
-            print(f"❌ Ошибка в do_POST: {e}")
-            self.send_json_response(500, {"error": str(e)})
+            print(f"💥 Критическая ошибка в do_POST: {e}")
+            return self.send_json_response(500, {"error": str(e)})
     
     def send_json_response(self, status_code, data):
         """Отправляет JSON ответ"""
         self.send_response(status_code)
         self.send_header('Content-type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
         self.end_headers()
-        self.wfile.write(json.dumps(data, ensure_ascii=False).encode())
+        response = json.dumps(data, ensure_ascii=False)
+        self.wfile.write(response.encode())
+        print(f"📤 Отправлен ответ: {status_code} - {response}")
     
     def send_html_response(self, html_content):
         """Отправляет HTML ответ"""
@@ -238,11 +267,3 @@ class handler(BaseHTTPRequestHandler):
         self.send_header('Content-type', 'text/html')
         self.end_headers()
         self.wfile.write(html_content.encode())
-
-# Для локального тестирования
-if __name__ == '__main__':
-    from http.server import HTTPServer
-    print("🚀 Сервер запущен на http://localhost:8000")
-    server = HTTPServer(('localhost', 8000), handler)
-    server.serve_forever()
-    #1
