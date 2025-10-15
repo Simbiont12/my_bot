@@ -18,10 +18,19 @@ def format_students_table(text):
         decoded_text = unquote(text)
         
         
-        group_match = re.search(r'(\d-ИКСС\d{2}-\d{2})', decoded_text)
-        if group_match:
-            group = group_match.group(1)
+        group_patterns = [
+            r'(\d-ИКСС\d{2}-\d{2})',
+            r'(\d-РМ\d{2}-\d{2})',
+            r'(\d-КВАНТ\d{2}-\d{2})',
+            r'(\d-РРТ\d{2}-\d{2})',
+            r'(\d-ИС\d{2}-\d{2})'
+        ]
         
+        for pattern in group_patterns:
+            group_match = re.search(pattern, decoded_text)
+            if group_match:
+                group = group_match.group(1)
+                break
         
         pattern = r'"([^"]+)"\s*:\s*([А-Яа-яёЁ]+)'
         matches = re.findall(pattern, decoded_text)
