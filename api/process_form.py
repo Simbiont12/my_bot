@@ -16,15 +16,13 @@ def format_students_table(text):
     try:
         
         decoded_text = unquote(text)
+        print(f"Decoded text: {decoded_text}")  # Для отладки
         
         
-        group_match = re.search(r'(\d-[А-Я]{2,}-\d{2,}-\d{2,})', decoded_text)
-        if not group_match:
-            group_match = re.search(r'(\d-[А-Я]{2,}\d{2,}-\d{2,})', decoded_text)
-        
-        
+        group_match = re.search(r'(\d-[А-Я]{2,}\d+-\d+)', decoded_text)
         if group_match:
             group = group_match.group(1)
+            print(f"Found group: {group}")  # Для отладки
         
         
         pattern = r'"([^"]+)"\s*:\s*([А-Яа-яёЁ]+)'
