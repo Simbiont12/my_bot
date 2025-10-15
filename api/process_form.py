@@ -48,7 +48,7 @@ def format_students_table(text):
     result = "ОТЧЕТ О ПОСЕЩАЕМОСТИ\n\n"
     
     if group:
-        result += f"Группа: {group}\n\n"
+        result += f"ГРУППА: {group}\n\n"
     
     for idx, student in enumerate(students, 1):
         result += f" {idx}. {student['name']} - {student['status']}\n"
