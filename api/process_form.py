@@ -32,6 +32,7 @@ def format_students_table(text):
                 group = group_match.group(1)
                 break
         
+        
         pattern = r'"([^"]+)"\s*:\s*([А-Яа-яёЁ]+)'
         matches = re.findall(pattern, decoded_text)
         
