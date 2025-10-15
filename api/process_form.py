@@ -14,20 +14,20 @@ def format_students_table(text):
     group = None
     
     try:
-        # Декодируем URL-encoded текст
+        
         decoded_text = unquote(text)
         
-        # Простой поиск группы
+        
         group_match = re.search(r'(\d-ИКСС\d{2}-\d{2})', decoded_text)
         if group_match:
             group = group_match.group(1)
         
-        # Простой поиск студентов в формате: "ФИО": Статус
+        
         pattern = r'"([^"]+)"\s*:\s*([А-Яа-яёЁ]+)'
         matches = re.findall(pattern, decoded_text)
         
         for name, status in matches:
-            # Проверяем валидность статуса
+           
             valid_statuses = ['Болеет', 'Прогул', 'Академ', 'ИГ', 'Заявление', 'Пришёл', 'Пришёд']
             if status not in valid_statuses:
                 status = "Пришёл"
@@ -41,10 +41,10 @@ def format_students_table(text):
     if not students:
         return "❌ Не удалось распознать данные формы"
     
-    # Сортируем студентов по фамилии
+    
     students.sort(key=lambda x: x['name'])
     
-    # Форматируем результат
+   
     result = "ОТЧЕТ О ПОСЕЩАЕМОСТИ\n\n"
     
     if group:
