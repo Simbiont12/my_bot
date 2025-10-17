@@ -31,8 +31,7 @@ def format_students_table(text):
         for name, status in matches:
            
             valid_statuses = ['Болеет', 'Прогул', 'Академ', 'ИГ', 'Заявление']
-            if status not in valid_statuses:
-                status = "Пришёл"
+            
             
             students.append({"name": name, "status": status})
     
