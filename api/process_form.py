@@ -22,7 +22,7 @@ def format_students_table(text):
         group_match = re.search(r'(\d-[А-Я]{2,}\d+-\d+)', decoded_text)
         if group_match:
             group = group_match.group(1)
-            print(f"Found group: {group}")  # Для отладки
+            print(f"Found group: {group}") 
         
         
         pattern = r'"([^"]+)"\s*:\s*([А-Яа-яёЁ]+)'
@@ -30,7 +30,7 @@ def format_students_table(text):
         
         for name, status in matches:
            
-            valid_statuses = ['Болеет', 'Прогул', 'Академ', 'ИГ', 'Заявление', 'Пришёл', 'Пришёд']
+            valid_statuses = ['Болеет', 'Прогул', 'Академ', 'ИГ', 'Заявление']
             if status not in valid_statuses:
                 status = "Пришёл"
             
